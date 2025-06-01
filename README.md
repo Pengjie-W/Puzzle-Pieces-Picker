@@ -1,7 +1,7 @@
 # Puzzle-Pieces-Picker
 Puzzle Pieces Picker: Deciphering Ancient Chinese Characters with Radical Reconstruction 
 
-[Demo](http://vlrlab-monkey.xyz:7684)  
+[Demo](http://vlrlabmonkey.xyz:7684)  
 [Dataset](https://figshare.com/s/c5eedcb5069c10a08830)
 
 <!-- ## Radical_Decomposition
