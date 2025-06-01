@@ -1,10 +1,10 @@
 # Puzzle-Pieces-Picker
 Puzzle Pieces Picker: Deciphering Ancient Chinese Characters with Radical Reconstruction 
 
-[Demo](http://vlrlab-monkey.xyz:7680/radicals/)  
+[Demo](http://vlrlab-monkey.xyz:7684)  
 [Dataset](https://figshare.com/s/c5eedcb5069c10a08830)
 
-## Radical_Decomposition
+<!-- ## Radical_Decomposition
 ```bash
 conda create --name Decomposition python=3.9
 conda activate Decomposition
@@ -47,4 +47,4 @@ cd Dataset_Generation
 python Deciphering_dataset.py
 python -u main.py | tee log/Deciphering_dataset/OBS_train.log
 
-```
+``` -->
