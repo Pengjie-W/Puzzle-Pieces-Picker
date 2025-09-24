@@ -26,7 +26,7 @@ pip install -e .
   - `Radical_Decomposition/`
     - `data/` OBI.zip — [Oracle bone inscription dataset](https://huggingface.co/datasets/wpj20000/P3/tree/main/Radical_Decomposition/data)
     - `sam/` sam_hq_vit_h.pth — [sam_hq_vit_h weights](https://huggingface.co/datasets/wpj20000/P3/tree/main/Radical_Decomposition/sam)(cloned from https://github.com/SysCV/sam-hq.git)
-    - `moco/` model_last.pth — [Pretrained MoCo weights](https://huggingface.co/datasets/wpj20000/P3/tree/main/Radical_Decomposition/moco)
+    - `moco/` model_last.pth — [trained MoCo weights](https://huggingface.co/datasets/wpj20000/P3/tree/main/Radical_Decomposition/moco)
     - `output/` output.zip — [Segmentation outputs](https://huggingface.co/datasets/wpj20000/P3/tree/main/Radical_Decomposition/output)
   - `Radical_Reconstruction/`
     - `data/` ACCP.zip — [ACCP dataset](https://huggingface.co/datasets/wpj20000/P3/tree/main/Radical_Reconstruction/data)
