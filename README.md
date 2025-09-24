@@ -107,9 +107,9 @@ python feature.py \
 #   --label-bank-path ./output/label_bank.json \
 #   --use-paper-dataset
 python filter.py \
-  --feature-bank ./output/feature_bank_old.pth \
-  --label-bank ./output/label_bank_old.json \
-  --target-bank ./output/target_bank_old.json \
+  --feature-bank ./output/feature_bank.pth \
+  --label-bank ./output/label_bank.json \
+  --target-bank ./output/target_bank.json \
   --test-set ../Radical_Reconstruction/Dataset_Generation/test.json \
   --radical-weight ./data/radical_weight.json \
   --hanzi ../Radical_Reconstruction/data/hanzi.json \

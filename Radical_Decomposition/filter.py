@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument("--radical-weight", dest="radical_weight_path", default="./data/radical_weight.json",
                         help="Path to the radical weight JSON database.")
     parser.add_argument("--hanzi", dest="hanzi_path",
-                        default="../Radical_Reconstruction/Dataset_Generation/hanzi.json",
+                        default="../Radical_Reconstruction/data/hanzi.json",
                         help="Path to the hanzi-to-radical JSON database.")
     parser.add_argument("--save-path", dest="save_path", default="./output/results_train",
                         help="Directory where filtered images will be copied.")
