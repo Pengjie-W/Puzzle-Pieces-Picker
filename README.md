@@ -12,6 +12,7 @@ ICDAR 2024 Oral
 conda create --name P3 python=3.9
 conda activate P3
 pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
+git clone https://github.com/Pengjie-W/Puzzle-Pieces-Picker.git
 pip install -r requirements.txt
 cd ./Radical_Decomposition/sam-hq-main/  # cloned from https://github.com/SysCV/sam-hq.git
 pip install -e .
