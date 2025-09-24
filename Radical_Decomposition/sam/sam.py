@@ -232,32 +232,32 @@ def mmm(masklist):
 def main():
     # -------- Parse command line arguments --------
     parser = argparse.ArgumentParser(description="Oracle Bone Segmentation Script")
-    parser.add_argument("--json", type=str, default="../data/OBI.json",
+    parser.add_argument("--json_file", type=str, default="../data/OBI.json",
                         help="Path to input JSON file (default: ../data/OBI.json)")
-    parser.add_argument("--outdir", type=str, default="../output/Decomposition/sam",
+    parser.add_argument("--output_dir", type=str, default="../output/Decomposition/sam",
                         help="Directory to save segmentation results (default: ../output/Decomposition/sam)")
     parser.add_argument("--gpu", type=int, default=0,
                         help="GPU id (default: 0)")
-    parser.add_argument("--imageroot", type=str, default="../data",
-                        help="Root folder of images, will be prepended to JSON paths (default: ..)")
+    parser.add_argument("--data_path", type=str, default="../data",
+                        help="Root folder of images, will be prepended to JSON paths (default: ../data)")
     args = parser.parse_args()
     # -------- Prepare model and output folders --------
     sam = getsamhq(args.gpu)  # Init SAM on GPU
-    with open(args.json, 'r', encoding='utf8') as f:
+    with open(args.json_file, 'r', encoding='utf8') as f:
         jgw = json.load(f)
 
-    if not os.path.exists(args.outdir):
-        os.makedirs(args.outdir, exist_ok=True)
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir, exist_ok=True)
     # -------- Process each image --------
     for num in tqdm(range(len(jgw))):
-        path = os.path.join(args.imageroot, jgw[num]['path'])  # prepend imageroot
+        path = os.path.join(args.data_path, jgw[num]['path'])  # prepend data_path
         label = jgw[num]['label']
         img = getgray(path)
         filename_with_extension = os.path.basename(path)
         filename_without_extension = os.path.splitext(filename_with_extension)[0]
 
         # Create output directories
-        save_dir = os.path.join(args.outdir, label, filename_without_extension)
+        save_dir = os.path.join(args.output_dir, label, filename_without_extension)
         os.makedirs(save_dir, exist_ok=True)
 
         # Use different generators depending on filename

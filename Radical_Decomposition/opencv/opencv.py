@@ -39,18 +39,18 @@ def getgray(path):
     img = np.array(gray_image)
     return img
 
-def cv_show(img, name):# Display image
+def cv_show(img, name):  # Display image
     cv2.imshow(name, img)
     cv2.waitKey()
     cv2.destroyAllWindows()
 
-def hull_cut(filter_xy,img,dianlist,dianarea,dianji):  # Crop image by convex hull
-    hull=cv2.convexHull(filter_xy)
-    col0 =hull[:,:,0]
-    col1 =hull[:,:,1]
-    x1=np.min(col0)
-    y1=np.min(col1)
-    x2=np.max(col0)
+def hull_cut(filter_xy, img, dianlist, dianarea, dianji):  # Crop image by convex hull
+    hull = cv2.convexHull(filter_xy)
+    col0 = hull[:, :, 0]
+    col1 = hull[:, :, 1]
+    x1 = np.min(col0)
+    y1 = np.min(col1)
+    x2 = np.max(col0)
     y2 = np.max(col1)
     if x1 < 0:
        x1 = 0
@@ -69,17 +69,17 @@ def hull_cut(filter_xy,img,dianlist,dianarea,dianji):  # Crop image by convex hu
                 mask2 = cv2.fillPoly(mask, [filter_xy[be:en]], (255, 255, 255))
             else:
                 be = en
-                en = dianlist[i]+en
+                en = dianlist[i] + en
                 mask2 = cv2.fillPoly(mask2, [filter_xy[be:en]], (255, 255, 255))
     else:
-        mask = np.zeros(img.shape,dtype=np.uint8)  # Create a mask of the same size as the original image, all initialized to 0
-        mask2 = cv2.fillPoly(mask,[filter_xy],(255,255,255))
+        mask = np.zeros(img.shape, dtype=np.uint8)  # Create a mask of the same size as the original image, all initialized to 0
+        mask2 = cv2.fillPoly(mask, [filter_xy], (255, 255, 255))
         kernel = np.ones((3, 3), np.uint8)
         mask2 = cv2.dilate(mask2, kernel, iterations=1)
         # mask2 = cv2.fillPoly(mask,[filter_xy],(255,255,255))
     ROI = cv2.bitwise_and(mask2, img)
     # img_end=ROI[y1:y2,x1:x2]
-    img_end=ROI
+    img_end = ROI
     return img_end
 
 def distance(a, b):
@@ -96,7 +96,7 @@ def cut_img(cnt, gray, point_num):
     flag = 0
     for i in range(cnt.shape[0]):
         if flag:
-            flag=flag-1
+            flag = flag - 1
             continue
         for j in range(i+link_min_distance, min(cnt.shape[0]-link_min_distance+i, cnt.shape[0])):
             t = distance(cnt[i][0], cnt[j][0])
@@ -175,7 +175,7 @@ def main():
         fwe = path.split('/')[-1]
 
         path=os.path.join(args.data_path,path)
-        fwoe = os.path.splitext(fwe)[0] # filename_without_extension
+        fwoe = os.path.splitext(fwe)[0] # filename without extension
         _writepath = os.path.join(args.output_dir, label)
         writepath = os.path.join(os.path.curdir, _writepath, f'{fwoe}')
 
@@ -184,7 +184,7 @@ def main():
         cv2.imencode('.jpg', gray)[1].tofile(writepath + '/0.jpg')
 
         contours = get_cnts(gray)
-        if(len(contours)==0):# Skip if no contours are detected
+        if(len(contours)==0):  # Skip if no contours are detected
             data['index'] = num
             data['structure'] = 'empty'
             data_set.append(copy.deepcopy(data))
@@ -210,17 +210,17 @@ def main():
             l.append(cv2.contourArea(contours[i]))
         zipcounter = zip(l, contours)
         sorted_zip = sorted(zipcounter, key=lambda x: x[0])
-        l,contours = zip(*sorted_zip)# Sorted by contour area
+        l,contours = zip(*sorted_zip)  # Sorted by contour area
         for i in range(0, len(contours)):
             if (cv2.contourArea(contours[i]) < MAX_IGNORE_SIZE_RATE*gray.shape[0]*gray.shape[1]):
                 err=err+1
-        contours = (contours[err:])# Ignore very small areas
+        contours = (contours[err:])  # Ignore very small areas
 
         dianlist=[]
         dian = 0
         dianji=None
         for i in range(0, len(contours)):
-            if (cv2.contourArea(contours[i]) <= max_point_size):# Treat very small contours as point sets
+            if (cv2.contourArea(contours[i]) <= max_point_size):  # Treat very small contours as point sets
                 if (dian == 0):
                     dianji = contours[i]
                     dian = dian + 1
@@ -232,12 +232,12 @@ def main():
                 break
 
         dianarea=0
-        if dian==1: # Special handling if only one point detected
+        if dian==1:  # Special handling if only one point detected
             if len(contours)==2:
-                mintemp = np.vstack((contours[0], contours[1]))# Do not cut in this case
+                mintemp = np.vstack((contours[0], contours[1]))  # Do not cut in this case
                 contours=(mintemp,)
             else:
-                minindex=mincontour(contours,0)# Choose the nearest contour
+                minindex=mincontour(contours,0)  # Choose the nearest contour
                 mintemp=contours[minindex]
                 mintemp=np.vstack((contours[0],mintemp))
                 if minindex == len(contours)-1:
@@ -248,8 +248,8 @@ def main():
                     contours = (mintemp,)  + contours[minindex + 1:]
         if dian > 1:
             dianarea = cv2.contourArea(dianji)
-            contours = (dianji,) + contours[dian:]# Combine point set with the rest
-        l = []# Up to here, removed errors and merged point sets
+            contours = (dianji,) + contours[dian:]  # Combine point set with the rest
+        l = []  # Up to here, removed errors and merged point sets
         for i in range(0, len(contours)):
             chu=0
             chuji = contours[0]
@@ -264,10 +264,10 @@ def main():
                 else:
                     continue
             (x, y, w, h) = cv2.boundingRect(chuji)
-            l.append(w*h)# Compute bounding rectangle excluding this part
+            l.append(w*h)  # Compute bounding rectangle excluding this part
         zipcounter = zip(l, contours)
         sorted_zip = sorted(zipcounter, key=lambda x: x[0])
-        l,contours = zip(*sorted_zip)# Sort ascending; smaller area means closer to edge
+        l,contours = zip(*sorted_zip)  # Sort ascending; smaller area means closer to edge
         if(len(contours)==1):
             num1=num1+1
         elif len(contours)==2:
@@ -277,7 +277,7 @@ def main():
         else:
             num4=num4+1
 
-        for co in range(0,len(contours)):# Save segmented images
+        for co in range(0,len(contours)):  # Save segmented images
             cnt=contours[co]
             gray1=getgray(path)
             gray1 = 255 - gray1
@@ -291,7 +291,7 @@ def main():
         if ((len(contours) == 1)):
             data['index'] = num
             data['structure'] = 'single'
-        else:# Extract structure info (currently not used)
+        else:  # Extract structure info (currently not used)
             for feni in range(0, len(contours)-1):
                 fen = 0
                 for i in range(feni+1, len(contours)):
@@ -310,7 +310,7 @@ def main():
 
                     structure = structure.replace(f'{feni+1}', structtemp)
             data['index'] = num
-            data['structure'] =structure
+            data['structure'] = structure
         data_set.append(copy.deepcopy(data))
         data.clear()
     

@@ -1,3 +1,4 @@
+import argparse
 import copy
 import json
 import os
@@ -6,22 +7,48 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-feature_bank = torch.load('./output/feature_bank_old.pth')  # feature
-with open('./output/label_bank_old.json', 'r', encoding='utf8') as f:
-    label_bank = json.load(f)  # file name
-with open('./output/target_bank_old.json', 'r', encoding='utf8') as f:
-    target_bank = json.load(f)  # Image path
 
-with open('../Radical_Reconstruction/Dataset_Generation/test.json', 'r', encoding='utf8') as f:
-    test = json.load(f)  # Test set
-feature_bank = feature_bank.cuda()
-save_path = './output/results_train'
-with open('./data/radical_weight.json', 'r', encoding='utf8') as f:
-    weight = json.load(f)  # Radical weight database, the possibility of Chinese characters corresponding to radicals
-weight[''] = weight['𢦏']  # Handling special characters in the radical weight library
-with open('../Radical_Reconstruction/Dataset_Generation/hanzi.json', 'r', encoding='utf-8') as file:
-    hanzis = json.load(file)  # Chinese character radical database, including radicals corresponding to Chinese characters
-hanzis[''] = hanzis['𢦏']  # Special Chinese characters
+def parse_args():
+    parser = argparse.ArgumentParser(description="Filter and reorganize radical decomposition results.")
+    parser.add_argument("--feature-bank", dest="feature_bank_path", default="./output/feature_bank.pth",
+                        help="Path to the cached feature bank tensor.")
+    parser.add_argument("--label-bank", dest="label_bank_path", default="./output/label_bank.json",
+                        help="Path to the label bank JSON file.")
+    parser.add_argument("--target-bank", dest="target_bank_path", default="./output/target_bank.json",
+                        help="Path to the target bank JSON file containing image paths.")
+    parser.add_argument("--test-set", dest="test_set_path",
+                        default="../Radical_Reconstruction/Dataset_Generation/test.json",
+                        help="Path to the JSON file that lists test-set hanzi.")
+    parser.add_argument("--radical-weight", dest="radical_weight_path", default="./data/radical_weight.json",
+                        help="Path to the radical weight JSON database.")
+    parser.add_argument("--hanzi", dest="hanzi_path",
+                        default="../Radical_Reconstruction/Dataset_Generation/hanzi.json",
+                        help="Path to the hanzi-to-radical JSON database.")
+    parser.add_argument("--save-path", dest="save_path", default="./output/results_train",
+                        help="Directory where filtered images will be copied.")
+    return parser.parse_args()
+
+
+def load_resources(args):
+    feature_bank = torch.load(args.feature_bank_path)
+    with open(args.label_bank_path, "r", encoding="utf8") as f:
+        label_bank = json.load(f)
+    with open(args.target_bank_path, "r", encoding="utf8") as f:
+        target_bank = json.load(f)
+    with open(args.test_set_path, "r", encoding="utf8") as f:
+        test = json.load(f)
+
+    feature_bank = feature_bank.cuda()
+
+    with open(args.radical_weight_path, "r", encoding="utf8") as f:
+        weight = json.load(f)
+    weight[''] = weight['𢦏']
+
+    with open(args.hanzi_path, "r", encoding="utf-8") as file:
+        hanzis = json.load(file)
+    hanzis[''] = hanzis['𢦏']
+
+    return feature_bank, label_bank, target_bank, test, weight, hanzis
 
 def process_folder(label_bank, target_bank, weight):
     """
@@ -87,9 +114,8 @@ def process_folder(label_bank, target_bank, weight):
                 temp[k] /= divisor
             weight_new[i] = temp
     return label_to_folder, weight_new
-label_to_folder, weight_new = process_folder(label_bank=label_bank, target_bank=target_bank, weight=weight) 
 
-def get_knn(weight_new):
+def get_knn(weight_new, feature_bank, target_bank, label_bank, test):
     """
     Aggregate per-image radical distributions from the K-nearest neighbors
     in feature space.
@@ -176,7 +202,7 @@ def get_knn(weight_new):
         knn[path] = data 
     return knn
 
-def get_correct(knn, label_to_folder):
+def get_correct(knn, label_to_folder, test, hanzis):
     """
     Check whether predicted radical sets match the ground-truth radical
     decomposition (ignoring structural operators like ⿰, ⿱, etc.).
@@ -241,9 +267,6 @@ def get_correct(knn, label_to_folder):
     return correct
 
 
-knn=get_knn(weight_new)
-corrects=get_correct(knn,label_to_folder)
-print(corrects)
 def softmax(x):
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum()
@@ -290,4 +313,39 @@ def pic(corrects, label_to_folder, knn, save_path):
                 dataset[destination_path]=1
                 print(source_path,radical_dist[radical])
     return dataset
-dataset=pic(corrects,label_to_folder,knn,save_path)
+
+
+def main():
+    args = parse_args()
+    feature_bank, label_bank, target_bank, test, weight, hanzis = load_resources(args)
+
+    label_to_folder, weight_new = process_folder(
+        label_bank=label_bank,
+        target_bank=target_bank,
+        weight=weight,
+    )
+    knn = get_knn(
+        weight_new=weight_new,
+        feature_bank=feature_bank,
+        target_bank=target_bank,
+        label_bank=label_bank,
+        test=test,
+    )
+    corrects = get_correct(
+        knn=knn,
+        label_to_folder=label_to_folder,
+        test=test,
+        hanzis=hanzis,
+    )
+    print(corrects)
+    dataset = pic(
+        corrects=corrects,
+        label_to_folder=label_to_folder,
+        knn=knn,
+        save_path=args.save_path,
+    )
+    return dataset
+
+
+if __name__ == "__main__":
+    main()

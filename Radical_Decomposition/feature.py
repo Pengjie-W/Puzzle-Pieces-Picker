@@ -62,6 +62,14 @@ parser.add_argument('--knn-t', default=0.1, type=float,
 # utils
 parser.add_argument('--resume', default='moco/model_last.pth', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
 parser.add_argument('--results-dir', default='', type=str, metavar='PATH', help='path to cache (default: none)')
+parser.add_argument('--feature-bank-path', default='./output/feature_bank.pth', type=str,
+                    help='path to save extracted feature bank tensor')
+parser.add_argument('--target-bank-path', default='./output/target_bank.json', type=str,
+                    help='path to save extracted target metadata')
+parser.add_argument('--label-bank-path', default='./output/label_bank.json', type=str,
+                    help='path to save extracted label metadata')
+parser.add_argument('--use-paper-dataset', action='store_true',
+                    help='use dataset files that match the paper-provided release')
 '''
 args = parser.parse_args()  # running in command line
 '''
@@ -79,21 +87,28 @@ print(args)
 """### Define data loaders"""
 
 class Mydata(Dataset) :
-    def __init__(self,transform = None):
+    def __init__(self, transform=None, use_paper_dataset=False):
         super(Mydata, self).__init__()
-        with open('./output/Decomposition_Dataset.json', 'r', encoding='utf8') as f:
-            images=json.load(f)
-            labels=images
-        self.images, self.labels = images, labels
-        # with open('target_bank_old.json', 'r', encoding='utf8') as f: # If you run it with the file provided by the paper
-        #     images=json.load(f)
-        # with open('label_bank_old.json', 'r', encoding='utf8') as f: # The original order in the paper was random, and drop_last=True, so it is different
-        #     labels=json.load(f)
-        # self.images, self.labels = images, labels
+        self.use_paper_dataset = use_paper_dataset
         self.transform = transform
+        if use_paper_dataset:
+            with open('./output/target_bank.json', 'r', encoding='utf8') as f:  # If you run it with the file provided by the paper
+                images = json.load(f)
+            with open('./output/label_bank.json', 'r', encoding='utf8') as f:  # The original order in the paper was random, and drop_last=True, so it is different
+                labels = json.load(f)
+            self.samples = list(zip(images, labels))
+        else:
+            with open('./output/Decomposition_Dataset.json', 'r', encoding='utf8') as f:
+                self.samples = json.load(f)
 
     def __getitem__(self, item):
-        image = Image.open(self.images[item]['path'])
+        if self.use_paper_dataset:
+            image_path, label = self.samples[item]
+        else:
+            sample = self.samples[item]
+            image_path, label = sample['path'], sample['label']
+
+        image = Image.open(image_path)
         if image.mode == 'L':
             image = image.convert('RGB')
         width, height = image.size
@@ -101,31 +116,32 @@ class Mydata(Dataset) :
             dy = width - height
             yl = round(dy / 2)
             yr = dy - yl
-            train_transform = transforms.Compose([
-                transforms.Pad([0, yl, 0, yr], fill=(255, 255, 255), padding_mode='constant'),
-                ])
+            pad_transform = transforms.Pad([0, yl, 0, yr], fill=(255, 255, 255), padding_mode='constant')
         else:
             dx = height - width
             xl = round(dx / 2)
             xr = dx - xl
-            train_transform = transforms.Compose([
-                transforms.Pad([xl, 0, xr, 0], fill=(255, 255, 255), padding_mode='constant'),
-                ])
+            pad_transform = transforms.Pad([xl, 0, xr, 0], fill=(255, 255, 255), padding_mode='constant')
 
-        image = train_transform(image)
+        image = pad_transform(image)
+        if self.use_paper_dataset:
+            normalize = transforms.Normalize([0.84959, 0.84959, 0.84959],
+                                             [0.30949923, 0.30949923, 0.30949923])
+        else:
+            normalize = transforms.Normalize([0.7482745, 0.7510818, 0.7501316],
+                                             [0.36487347, 0.36375728, 0.36417565])
         train_transform = transforms.Compose([
             transforms.Resize((128, 128)),
             transforms.ToTensor(),
-        # transforms.Normalize([0.84959, 0.84959, 0.84959], [0.30949923, 0.30949923, 0.30949923])]) # If you run it with the file provided by the paper
-        transforms.Normalize([0.7482745, 0.7510818, 0.7501316], [0.36487347, 0.36375728, 0.36417565])])
+            normalize
+        ])
         image = train_transform(image)
-        return image,self.images[item]['path'],self.images[item]['label']
-        # return image,self.images[item],self.labels[item] # If you run it with the file provided by the paper
+        return image, image_path, label
 
     def __len__(self):
-        return len(self.images)
+        return len(self.samples)
 
-train_dataset = Mydata()
+train_dataset = Mydata(use_paper_dataset=args.use_paper_dataset)
 train_loader = DataLoader(train_dataset, shuffle=False, batch_size=512, num_workers=16, drop_last=False,
                           pin_memory=True)
 # train_loader = DataLoader(train_dataset, shuffle=True, batch_size=512, num_workers=16, drop_last=True,
@@ -392,10 +408,20 @@ def test(net, memory_data_loader, epoch, args):
             target_bank=target_bank+target
         # [D, N]
         feature_bank = torch.cat(feature_bank, dim=0).t().contiguous()
-        torch.save(feature_bank, './output/feature_bank.pth')
-        with open('./output/target_bank.json', 'w', encoding='utf8') as f:
+
+        feature_bank_path = args.feature_bank_path
+        target_bank_path = args.target_bank_path
+        label_bank_path = args.label_bank_path
+
+        for output_path in (feature_bank_path, target_bank_path, label_bank_path):
+            output_dir = os.path.dirname(output_path)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+
+        torch.save(feature_bank, feature_bank_path)
+        with open(target_bank_path, 'w', encoding='utf8') as f:
             json.dump(target_bank, f, ensure_ascii=False)
-        with open('./output/label_bank.json', 'w', encoding='utf8') as f:
+        with open(label_bank_path, 'w', encoding='utf8') as f:
             json.dump(label_bank, f, ensure_ascii=False)
         # [N]
 

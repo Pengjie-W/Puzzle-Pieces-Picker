@@ -1,16 +1,83 @@
+import argparse
+import collections
 import copy
 import json
 import os
 import random
-import collections
-random.seed(42)
-with open('hanzi.json', 'r', encoding='utf-8') as file:
-    hanzis = json.load(file)
-with open('source.json', 'r', encoding='utf-8') as file:
-    source = json.load(file)
-with open('../data/ID_to_Chinese.json', 'r', encoding='utf-8') as file:
-    ID_to_Chinese = json.load(file)
-max_len=24
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Generate deciphering datasets from provided corpus paths."
+    )
+    parser.add_argument(
+        "--hanzi",
+        default="../data/hanzi.json",
+        help="Path to the hanzi.json corpus file."
+    )
+    parser.add_argument(
+        "--source",
+        default="../data/source.json",
+        help="Path to the source.json corpus file."
+    )
+    parser.add_argument(
+        "--id-to-chinese",
+        default="../data/ID_to_Chinese.json",
+        dest="id_to_chinese",
+        help="Path to the ID_to_Chinese.json mapping file."
+    )
+    parser.add_argument(
+        "--obs-root",
+        default="../data/Dataset",
+        help="Root directory for OBS data collection."
+    )
+    parser.add_argument(
+        "--dataset-root",
+        default="../data/dataset",
+        help="Root directory for dataset generation."
+    )
+    parser.add_argument(
+        "--font-root",
+        default="../data/Font_Generation",
+        help="Root directory containing generated font data."
+    )
+    parser.add_argument(
+        "--train",
+        default="train.json",
+        help="Path to the train.json split file."
+    )
+    parser.add_argument(
+        "--test",
+        default="test.json",
+        help="Path to the test.json split file."
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="Deciphering_dataset",
+        dest="output_dir",
+        help="Directory where the generated datasets will be saved."
+    )
+    parser.add_argument(
+        "--max-len",
+        type=int,
+        default=24,
+        dest="max_len",
+        help="Maximum sequence length for truncation and padding."
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for shuffling."
+    )
+    return parser.parse_args()
+
+
+def load_json(path: str):
+    with open(path, "r", encoding="utf-8") as file:
+        return json.load(file)
+
+
 def count_corpus(tokens):  # @save
     """Count token frequencies."""
     # `tokens` can be a 1D list or a 2D list
@@ -62,116 +129,168 @@ class Vocab:
     @property
     def token_freqs(self):  # Index for the unknown token
         return self._token_freqs
-src_vocab = Vocab(source, min_freq=0,
-                      reserved_tokens=['<pad>', '<bos>','<sos>', '<eos>'])
+
+
 def truncate_pad(line, num_steps, padding_token):
     """Truncate or pad a text sequence to a fixed length."""
     if len(line) > num_steps:
-        return line[:num_steps]  # 截断
-    return line + [padding_token] * (num_steps - len(line))  # 填充
+        return line[:num_steps]
+    return line + [padding_token] * (num_steps - len(line))
+
+
 def build_array_nmt(lines, vocab, num_steps):
     """Convert machine translation text sequences into mini-batches."""
     lines = [vocab[l] for l in lines]
     lines = [l + [vocab['<eos>']] for l in lines]
-    array = [truncate_pad(
-        l, num_steps, vocab['<pad>']) for l in lines]
+    array = [truncate_pad(l, num_steps, vocab['<pad>']) for l in lines]
     # valid_len = (array != vocab['<pad>']).type(torch.int32).sum(1)
-    valid_len=0
+    valid_len = 0
     return array, valid_len
-OBS=[]
-for root, directories, files in os.walk('../data/Dataset'):
-    for file in files:
-        file_path = os.path.join(root, file)
-        folders = os.path.split(file_path)[0].split(os.sep)
-        hanzi = folders[-1]
-        if file[0] == 'O':
-            if hanzi not in OBS:
-                OBS.append(hanzi)
-            continue
-random.shuffle(OBS)
-# train=OBS[:-1000]
-# test=OBS[-1000:]
-with open('train.json', 'r', encoding='utf-8') as file:
-    train = json.load(file)
-with open('test.json', 'r', encoding='utf-8') as file:
-    test = json.load(file)
-OBS_train=[]
-OBS_test=[]
-Bronze_train=[]
-Bronze_test=[]
-Warring_train=[]
-Warring_test=[]
-Seal_train=[]
-Seal_test=[]
-Clerical_train=[]
-Clerical_test=[]
-Kangxi_train=[]
-Kangxi_test=[]
-Regular_train=[]
-Regular_test=[]
-for root, directories, files in os.walk('../data/dataset'):
-    for file in files:
-        file_path = os.path.join(root, file)
-        folders = os.path.split(file_path)[0].split(os.sep)
-        hanzi = ID_to_Chinese[folders[-1]]
-        xu, _ = build_array_nmt(hanzis[hanzi], src_vocab, max_len)
-        for j in xu:
-            data = {}
-            inseq = [src_vocab['<sos>']] + j[:-1]
-            data['input_seqs'] = inseq
-            data['path'] = file_path
-            data['label'] = hanzi
-            data['output_seqs'] = j
-            if hanzi in test:
-                if file[0] == 'O':
-                    OBS_test.append(copy.deepcopy(data))
+
+
+def dump_dataset(path: str, payload):
+    with open(path, "w", encoding="utf-8") as file:
+        json.dump(payload, file, ensure_ascii=False)
+
+
+def main() -> None:
+    args = parse_args()
+    random.seed(args.seed)
+
+    hanzis = load_json(args.hanzi)
+    source = load_json(args.source)
+    id_to_chinese = load_json(args.id_to_chinese)
+    train = load_json(args.train)
+    test = load_json(args.test)
+
+    src_vocab = Vocab(
+        source,
+        min_freq=0,
+        reserved_tokens=['<pad>', '<bos>', '<sos>', '<eos>']
+    )
+
+    obs_hanzis = []
+    for root, _, files in os.walk(args.dataset_root):
+        for file in files:
+            file_path = os.path.join(root, file)
+            folders = os.path.split(file_path)[0].split(os.sep)
+            hanzi = folders[-1]
+            if file and file[0] == 'O' and hanzi not in obs_hanzis:
+                obs_hanzis.append(hanzi)
+    random.shuffle(obs_hanzis)
+    # train=obs_hanzis[:-1000]
+    # test=obs_hanzis[-1000:]
+    OBS_train = []
+    OBS_test = []
+    Bronze_train = []
+    Bronze_test = []
+    Warring_train = []
+    Warring_test = []
+    Seal_train = []
+    Seal_test = []
+    Clerical_train = []
+    Clerical_test = []
+    Kangxi_train = []
+    Kangxi_test = []
+    Regular_train = []
+    Regular_test = []
+
+    for root, _, files in os.walk(args.dataset_root):
+        for file in files:
+            file_path = os.path.join(root, file)
+            folders = os.path.split(file_path)[0].split(os.sep)
+            hanzi = id_to_chinese[folders[-1]]
+            sequences, _ = build_array_nmt(hanzis[hanzi], src_vocab, args.max_len)
+            for sequence in sequences:
+                data = {
+                    'input_seqs': [src_vocab['<sos>']] + sequence[:-1],
+                    'path': file_path,
+                    'label': hanzi,
+                    'output_seqs': sequence,
+                }
+                if hanzi in test:
+                    if file and file[0] == 'O':
+                        OBS_test.append(copy.deepcopy(data))
+                        Bronze_train.append(copy.deepcopy(data))
+                        Warring_train.append(copy.deepcopy(data))
+                        Seal_train.append(copy.deepcopy(data))
+                        Clerical_train.append(copy.deepcopy(data))
+                        Kangxi_train.append(copy.deepcopy(data))
+                        Regular_train.append(copy.deepcopy(data))
+                    elif file and file[0] == 'J':
+                        OBS_train.append(copy.deepcopy(data))
+                        Bronze_test.append(copy.deepcopy(data))
+                        Warring_train.append(copy.deepcopy(data))
+                        Seal_train.append(copy.deepcopy(data))
+                        Clerical_train.append(copy.deepcopy(data))
+                        Kangxi_train.append(copy.deepcopy(data))
+                        Regular_train.append(copy.deepcopy(data))
+                    elif file and file[0] == 'W':
+                        OBS_train.append(copy.deepcopy(data))
+                        Bronze_train.append(copy.deepcopy(data))
+                        Warring_test.append(copy.deepcopy(data))
+                        Seal_train.append(copy.deepcopy(data))
+                        Clerical_train.append(copy.deepcopy(data))
+                        Kangxi_train.append(copy.deepcopy(data))
+                        Regular_train.append(copy.deepcopy(data))
+                    elif file and file[0] == 'Z':
+                        OBS_train.append(copy.deepcopy(data))
+                        Bronze_train.append(copy.deepcopy(data))
+                        Warring_train.append(copy.deepcopy(data))
+                        Seal_test.append(copy.deepcopy(data))
+                        Clerical_train.append(copy.deepcopy(data))
+                        Kangxi_train.append(copy.deepcopy(data))
+                        Regular_train.append(copy.deepcopy(data))
+                    elif file and file[0] == 'L':
+                        OBS_train.append(copy.deepcopy(data))
+                        Bronze_train.append(copy.deepcopy(data))
+                        Warring_train.append(copy.deepcopy(data))
+                        Seal_train.append(copy.deepcopy(data))
+                        Clerical_test.append(copy.deepcopy(data))
+                        Kangxi_train.append(copy.deepcopy(data))
+                        Regular_train.append(copy.deepcopy(data))
+                    elif file and file[0] == 'X':
+                        OBS_train.append(copy.deepcopy(data))
+                        Bronze_train.append(copy.deepcopy(data))
+                        Warring_train.append(copy.deepcopy(data))
+                        Seal_train.append(copy.deepcopy(data))
+                        Clerical_train.append(copy.deepcopy(data))
+                        Kangxi_test.append(copy.deepcopy(data))
+                        Regular_train.append(copy.deepcopy(data))
+                    elif file and file[0] == 'K':
+                        OBS_train.append(copy.deepcopy(data))
+                        Bronze_train.append(copy.deepcopy(data))
+                        Warring_train.append(copy.deepcopy(data))
+                        Seal_train.append(copy.deepcopy(data))
+                        Clerical_train.append(copy.deepcopy(data))
+                        Kangxi_train.append(copy.deepcopy(data))
+                        Regular_test.append(copy.deepcopy(data))
+                    else:
+                        print(file_path)
+                else:
+                    OBS_train.append(copy.deepcopy(data))
                     Bronze_train.append(copy.deepcopy(data))
                     Warring_train.append(copy.deepcopy(data))
                     Seal_train.append(copy.deepcopy(data))
                     Clerical_train.append(copy.deepcopy(data))
                     Kangxi_train.append(copy.deepcopy(data))
                     Regular_train.append(copy.deepcopy(data))
-                elif file[0] == 'J':
-                    OBS_train.append(copy.deepcopy(data))
-                    Bronze_test.append(copy.deepcopy(data))
-                    Warring_train.append(copy.deepcopy(data))
-                    Seal_train.append(copy.deepcopy(data))
-                    Clerical_train.append(copy.deepcopy(data))
-                    Kangxi_train.append(copy.deepcopy(data))
-                    Regular_train.append(copy.deepcopy(data))
-                elif file[0] == 'W':
-                    OBS_train.append(copy.deepcopy(data))
-                    Bronze_train.append(copy.deepcopy(data))
-                    Warring_test.append(copy.deepcopy(data))
-                    Seal_train.append(copy.deepcopy(data))
-                    Clerical_train.append(copy.deepcopy(data))
-                    Kangxi_train.append(copy.deepcopy(data))
-                    Regular_train.append(copy.deepcopy(data))
-                elif file[0] == 'Z':
-                    OBS_train.append(copy.deepcopy(data))
-                    Bronze_train.append(copy.deepcopy(data))
-                    Warring_train.append(copy.deepcopy(data))
-                    Seal_test.append(copy.deepcopy(data))
-                    Clerical_train.append(copy.deepcopy(data))
-                    Kangxi_train.append(copy.deepcopy(data))
-                    Regular_train.append(copy.deepcopy(data))
-                elif file[0] == 'L':
-                    OBS_train.append(copy.deepcopy(data))
-                    Bronze_train.append(copy.deepcopy(data))
-                    Warring_train.append(copy.deepcopy(data))
-                    Seal_train.append(copy.deepcopy(data))
-                    Clerical_test.append(copy.deepcopy(data))
-                    Kangxi_train.append(copy.deepcopy(data))
-                    Regular_train.append(copy.deepcopy(data))
-                elif file[0] == 'X':
-                    OBS_train.append(copy.deepcopy(data))
-                    Bronze_train.append(copy.deepcopy(data))
-                    Warring_train.append(copy.deepcopy(data))
-                    Seal_train.append(copy.deepcopy(data))
-                    Clerical_train.append(copy.deepcopy(data))
-                    Kangxi_test.append(copy.deepcopy(data))
-                    Regular_train.append(copy.deepcopy(data))
-                elif file[0] == 'K':
+
+    for root, _, files in os.walk(args.font_root):
+        for file in files:
+            file_path = os.path.join(root, file)
+            folders = os.path.split(file_path)[0].split(os.sep)
+            name_without_ext = os.path.splitext(file)[0]
+            hanzi = id_to_chinese[name_without_ext]
+            sequences, _ = build_array_nmt(hanzis[hanzi], src_vocab, args.max_len)
+            for sequence in sequences:
+                data = {
+                    'input_seqs': [src_vocab['<sos>']] + sequence[:-1],
+                    'path': file_path,
+                    'label': hanzi,
+                    'output_seqs': sequence,
+                }
+                if hanzi in test:
                     OBS_train.append(copy.deepcopy(data))
                     Bronze_train.append(copy.deepcopy(data))
                     Warring_train.append(copy.deepcopy(data))
@@ -180,105 +299,41 @@ for root, directories, files in os.walk('../data/dataset'):
                     Kangxi_train.append(copy.deepcopy(data))
                     Regular_test.append(copy.deepcopy(data))
                 else:
-                    print(file_path)
-            else:
-                OBS_train.append(copy.deepcopy(data))
-                Bronze_train.append(copy.deepcopy(data))
-                Warring_train.append(copy.deepcopy(data))
-                Seal_train.append(copy.deepcopy(data))
-                Clerical_train.append(copy.deepcopy(data))
-                Kangxi_train.append(copy.deepcopy(data))
-                Regular_train.append(copy.deepcopy(data))
+                    OBS_train.append(copy.deepcopy(data))
+                    Bronze_train.append(copy.deepcopy(data))
+                    Warring_train.append(copy.deepcopy(data))
+                    Seal_train.append(copy.deepcopy(data))
+                    Clerical_train.append(copy.deepcopy(data))
+                    Kangxi_train.append(copy.deepcopy(data))
+                    Regular_train.append(copy.deepcopy(data))
 
-for root, directories, files in os.walk('../data/Font_Generation'):
-    for file in files:
-        file_path = os.path.join(root, file)
-        folders = os.path.split(file_path)[0].split(os.sep)
-        name_without_ext = os.path.splitext(file)[0]
-        hanzi = ID_to_Chinese[name_without_ext]
-        xu, _ = build_array_nmt(hanzis[hanzi], src_vocab, max_len)
-        for j in xu:
-            data = {}
-            inseq = [src_vocab['<sos>']] + j[:-1]
-            data['input_seqs'] = inseq
-            data['path'] = file_path
-            data['label'] = hanzi
-            data['output_seqs'] = j
-            if hanzi in test:
-                OBS_train.append(copy.deepcopy(data))
-                Bronze_train.append(copy.deepcopy(data))
-                Warring_train.append(copy.deepcopy(data))
-                Seal_train.append(copy.deepcopy(data))
-                Clerical_train.append(copy.deepcopy(data))
-                Kangxi_train.append(copy.deepcopy(data))
-                Regular_test.append(copy.deepcopy(data))
-            else:
-                OBS_train.append(copy.deepcopy(data))
-                Bronze_train.append(copy.deepcopy(data))
-                Warring_train.append(copy.deepcopy(data))
-                Seal_train.append(copy.deepcopy(data))
-                Clerical_train.append(copy.deepcopy(data))
-                Kangxi_train.append(copy.deepcopy(data))
-                Regular_train.append(copy.deepcopy(data))
-if not os.path.exists('Deciphering_dataset'):
-        os.makedirs('Deciphering_dataset')
-with open('Deciphering_dataset/OBS_train.json','w',encoding='utf8') as f:
-    json.dump(OBS_train, f, ensure_ascii=False)
-print('OBS_train',len(OBS_train))
+    os.makedirs(args.output_dir, exist_ok=True)
 
-with open('Deciphering_dataset/OBS_test.json','w',encoding='utf8') as f:
-    json.dump(OBS_test, f, ensure_ascii=False)
-print('OBS_test',len(OBS_test))
+    dataset_paths = {
+        'OBS_train': OBS_train,
+        'OBS_test': OBS_test,
+        'Bronze_train': Bronze_train,
+        'Bronze_test': Bronze_test,
+        'Warring_train': Warring_train,
+        'Warring_test': Warring_test,
+        'Seal_train': Seal_train,
+        'Seal_test': Seal_test,
+        'Clerical_train': Clerical_train,
+        'Clerical_test': Clerical_test,
+        'Kangxi_train': Kangxi_train,
+        'Kangxi_test': Kangxi_test,
+        'Regular_train': Regular_train,
+        'Regular_test': Regular_test,
+    }
 
-with open('Deciphering_dataset/Bronze_train.json','w',encoding='utf8') as f:
-    json.dump(Bronze_train, f, ensure_ascii=False)
-print('Bronze_train',len(Bronze_train))
+    for name, payload in dataset_paths.items():
+        output_path = os.path.join(args.output_dir, f"{name}.json")
+        dump_dataset(output_path, payload)
+        print(name, len(payload))
 
-with open('Deciphering_dataset/Bronze_test.json','w',encoding='utf8') as f:
-    json.dump(Bronze_test, f, ensure_ascii=False)
-print('Bronze_test',len(Bronze_test))
+    dump_dataset(os.path.join(args.output_dir, 'train.json'), train)
+    dump_dataset(os.path.join(args.output_dir, 'test.json'), test)
 
-with open('Deciphering_dataset/Warring_train.json','w',encoding='utf8') as f:
-    json.dump(Warring_train, f, ensure_ascii=False)
-print('Warring_train',len(Warring_train))
 
-with open('Deciphering_dataset/Warring_test.json','w',encoding='utf8') as f:
-    json.dump(Warring_test, f, ensure_ascii=False)
-print('Warring_test',len(Warring_test))
-
-with open('Deciphering_dataset/Seal_train.json','w',encoding='utf8') as f:
-    json.dump(Seal_train, f, ensure_ascii=False)
-print('Seal_train',len(Seal_train))
-
-with open('Deciphering_dataset/Seal_test.json','w',encoding='utf8') as f:
-    json.dump(Seal_test, f, ensure_ascii=False)
-print('Seal_test',len(Seal_test))
-
-with open('Deciphering_dataset/Clerical_train.json','w',encoding='utf8') as f:
-    json.dump(Clerical_train, f, ensure_ascii=False)
-print('Clerical_train',len(Clerical_train))
-
-with open('Deciphering_dataset/Clerical_test.json','w',encoding='utf8') as f:
-    json.dump(Clerical_test, f, ensure_ascii=False)
-print('Clerical_test',len(Clerical_test))
-
-with open('Deciphering_dataset/Kangxi_train.json','w',encoding='utf8') as f:
-    json.dump(Kangxi_train, f, ensure_ascii=False)
-print('Kangxi_train',len(Kangxi_train))
-
-with open('Deciphering_dataset/Kangxi_test.json','w',encoding='utf8') as f:
-    json.dump(Kangxi_test, f, ensure_ascii=False)
-print('Kangxi_test',len(Kangxi_test))
-
-with open('Deciphering_dataset/Regular_train.json','w',encoding='utf8') as f:
-    json.dump(Regular_train, f, ensure_ascii=False)
-print('Regular_train',len(Regular_train))
-
-with open('Deciphering_dataset/Regular_test.json','w',encoding='utf8') as f:
-    json.dump(Regular_test, f, ensure_ascii=False)
-print('Regular_test',len(Regular_test))
-
-with open('Deciphering_dataset/train.json','w',encoding='utf8') as f:
-    json.dump(train, f, ensure_ascii=False)
-with open('Deciphering_dataset/test.json','w',encoding='utf8') as f:
-    json.dump(test, f, ensure_ascii=False)
+if __name__ == "__main__":
+    main()
