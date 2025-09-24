@@ -28,7 +28,19 @@ pip install -e .
     - `data/` ACCP.zip — [ACCP dataset](https://huggingface.co/datasets/wpj20000/P3/tree/main/Radical_Reconstruction/data)
 
 You can download it to a folder and then unzip it
+```bash
+huggingface-cli download wpj20000/P3 \
+  --repo-type dataset \
+  --local-dir . \
+  --local-dir-use-symlinks False \
+  --resume \
+  --max-workers 1
 
+unzip Radical_Decomposition/data/OBI.zip
+unzip Radical_Decomposition/output/output.zip
+unzip Radical_Reconstruction/data/ACCP.zip
+
+```
 ## Radical Decomposition Pipeline
 These commands produce radical-level segments and features (or you can download the prepared `output` directory and move on to radical reconstruction).
 
