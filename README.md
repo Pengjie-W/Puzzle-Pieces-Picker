@@ -161,7 +161,7 @@ python -u main.py \
   --train_dataset ${TRAIN_DATASET} \
   --test_dataset ${TEST_DATASET} \
   --device 0 \
-  --source ../data/source.json \
+  --source ./data/source.json \
   --output_folder ./output/Deciphering_dataset/${TRAIN_DATASET}/ \
   | tee log/Deciphering_dataset/${TRAIN_DATASET}.log
 
@@ -170,7 +170,7 @@ python -u main.py \
   --batch_size 256 --num_workers 4 \
   --train_dataset ${TRAIN_DATASET} \
   --test_dataset ${TEST_DATASET} \
-  --source ../data/source.json \
+  --source ./data/source.json \
   --device 0 --eval --resume "${CHECKPOINT}" \
   --output_folder ./output/Deciphering_dataset/${TRAIN_DATASET}/ \
   | tee log/Deciphering_dataset/${TEST_DATASET}.log
