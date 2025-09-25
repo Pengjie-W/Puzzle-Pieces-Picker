@@ -110,7 +110,7 @@ python filter.py \
   --feature-bank ./output/feature_bank.pth \
   --label-bank ./output/label_bank.json \
   --target-bank ./output/target_bank.json \
-  --test-set ../Radical_Reconstruction/Dataset_Generation/test.json \
+  --test-set ../Radical_Reconstruction/data/test.json \
   --radical-weight ./data/radical_weight.json \
   --hanzi ../Radical_Reconstruction/data/hanzi.json \
   --save-path ./output/results_train
