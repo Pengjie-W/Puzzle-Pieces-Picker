@@ -54,8 +54,8 @@ class Vocab:
     def token_freqs(self):  # Index for the unknown token
         return self._token_freqs
 def get_src_vocab(args):
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(current_dir, args.source)
+
+    file_path = args.source
 
     with open(file_path, 'r', encoding='utf-8') as file:
         source = json.load(file)

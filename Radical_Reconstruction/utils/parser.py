@@ -43,7 +43,7 @@ class DefaultParser(object):
         parser.add_argument('--resume', type=str, default='')
         parser.add_argument('--output_folder', type=str,default='./output/Deciphering_dataset/OBS_train/')
         parser.add_argument('--print_freq', type=int, default=10)
-        parser.add_argument('--source', type=str, default='../data/source.json')
+        parser.add_argument('--source', type=str, default='./data/source.json')
         parser.add_argument('--checkpoint_freq', type=int, default=100)
         parser.add_argument('--max_norm', type=float, default=0.1)
         parser.add_argument('--device', type=int, default=0)
@@ -57,8 +57,8 @@ class DefaultParser(object):
         parser.add_argument('--length_penalty', type=float, default=0.7)
 
         # Validation Parameters
-        parser.add_argument('--hanzi', type=str, default='../engine/all_hanzi_key.json')
-        parser.add_argument('--key_to_hanzi', type=str, default='../engine/all_key_to_hanzi.json')
+        parser.add_argument('--hanzi', type=str, default='./engine/all_hanzi_key.json')
+        parser.add_argument('--key_to_hanzi', type=str, default='./engine/all_key_to_hanzi.json')
 
         # Distributed Parameters
         parser.add_argument('--local_rank', type=int, default=0)
