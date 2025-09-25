@@ -12,11 +12,10 @@ from get_dataset.get_src_vocab import get_src_vocab
 def validate(model, dataloader, epoch, args):
     model.eval()
     device = torch.device(f'cuda:{args.device}')
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(current_dir, 'all_hanzi_key.json')
+    file_path = args.hanzi
     with open(file_path, 'r', encoding='utf-8') as file:
         radical_dataset = json.load(file)
-    file_path = os.path.join(current_dir, 'all_key_to_hanzi.json')
+    file_path = args.key_to_hanzi
     with open(file_path, 'r', encoding='utf-8') as file:
         key_to_hanzi = json.load(file)
     src_vocab = get_src_vocab(args)

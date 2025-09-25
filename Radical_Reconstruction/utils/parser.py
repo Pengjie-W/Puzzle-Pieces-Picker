@@ -56,6 +56,9 @@ class DefaultParser(object):
         parser.add_argument('--use_length_penalty', action='store_true',default=False)
         parser.add_argument('--length_penalty', type=float, default=0.7)
 
+        # Validation Parameters
+        parser.add_argument('--hanzi', type=str, default='../engine/all_hanzi_key.json')
+        parser.add_argument('--key_to_hanzi', type=str, default='../engine/all_key_to_hanzi.json')
 
         # Distributed Parameters
         parser.add_argument('--local_rank', type=int, default=0)
