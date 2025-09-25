@@ -163,6 +163,8 @@ python -u main.py \
   --device 0 \
   --source ./data/source.json \
   --output_folder ./output/Deciphering_dataset/${TRAIN_DATASET}/ \
+  --hanzi ./engine/all_hanzi_key.json \
+  --key_to_hanzi ./engine/all_key_to_hanzi.json \
   | tee log/Deciphering_dataset/${TRAIN_DATASET}.log
 
 # Evaluation template
@@ -173,6 +175,8 @@ python -u main.py \
   --source ./data/source.json \
   --device 0 --eval --resume "${CHECKPOINT}" \
   --output_folder ./output/Deciphering_dataset/${TRAIN_DATASET}/ \
+  --hanzi ./engine/all_hanzi_key.json \
+  --key_to_hanzi ./engine/all_key_to_hanzi.json \
   | tee log/Deciphering_dataset/${TEST_DATASET}.log
 ```
 
