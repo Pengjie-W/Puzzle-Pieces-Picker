@@ -37,7 +37,7 @@ def load_resources(args):
         target_bank = json.load(f)
     with open(args.test_set_path, "r", encoding="utf8") as f:
         test = json.load(f)
-
+    test=''.join(test)
     feature_bank = feature_bank.cuda()
 
     with open(args.radical_weight_path, "r", encoding="utf8") as f:
