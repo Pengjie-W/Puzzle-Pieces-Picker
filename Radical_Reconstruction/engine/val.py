@@ -109,6 +109,6 @@ def test(model, dataloader, epoch, args):
             print(data)
             print(recog)
 
-    with open(f'{args.train_dataset}_test.json', 'w', encoding='utf-8') as f:
+    with open(f'{args.test_dataset}_test.json', 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
-    print(f'save {args.train_dataset}_test.json')
+    print(f'save {args.test_dataset}_test.json')
