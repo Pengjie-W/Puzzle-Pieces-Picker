@@ -34,7 +34,12 @@ def main(args):
     checkpointer = Checkpointer(args.distributed)
     from get_dataset.get_dataset import getdataset
     train_dataloader,val_dataloader=getdataset(args)
-
+    if args.test:
+        assert(args.resume != '')
+        epoch = checkpointer.load(args.resume, model)
+        # validate(model, val_dataloader, epoch, args)
+        test(model, val_dataloader, epoch, args)
+        return
     if args.eval:
         assert(args.resume != '')
         epoch = checkpointer.load(args.resume, model)
