@@ -168,6 +168,7 @@ def main() -> None:
             folders = os.path.split(file_path)[0].split(os.sep)
             hanzi = folders[-1]
             sequences, _ = build_array_nmt(hanzis[hanzi], src_vocab, args.max_len)
+            # sequences=[sequences[0]] # or only use one sequence
             for sequence in sequences:
                 data = {
                     'input_seqs': [src_vocab['<sos>']] + sequence[:-1],

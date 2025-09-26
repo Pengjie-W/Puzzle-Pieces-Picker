@@ -201,6 +201,7 @@ def main() -> None:
             folders = os.path.split(file_path)[0].split(os.sep)
             hanzi = id_to_chinese[folders[-1]]
             sequences, _ = build_array_nmt(hanzis[hanzi], src_vocab, args.max_len)
+            # sequences=[sequences[0]] # or only use one sequence
             for sequence in sequences:
                 data = {
                     'input_seqs': [src_vocab['<sos>']] + sequence[:-1],
@@ -283,6 +284,7 @@ def main() -> None:
             name_without_ext = os.path.splitext(file)[0]
             hanzi = id_to_chinese[name_without_ext]
             sequences, _ = build_array_nmt(hanzis[hanzi], src_vocab, args.max_len)
+            # sequences=[sequences[0]] # or only use one sequence
             for sequence in sequences:
                 data = {
                     'input_seqs': [src_vocab['<sos>']] + sequence[:-1],
