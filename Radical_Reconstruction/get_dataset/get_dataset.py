@@ -223,5 +223,5 @@ def getdataset(args):
     train_dataset = traindata(args)
     train_loader = DataLoader(train_dataset, shuffle = True, batch_size = args.batch_size, num_workers=args.num_workers,drop_last=True, pin_memory=True,)
     test_dataset = testdata(args)
-    test_loader = DataLoader(test_dataset, shuffle = True, batch_size=1, num_workers=args.num_workers,drop_last=True, pin_memory=True, )
+    test_loader = DataLoader(test_dataset, shuffle = False, batch_size=1, num_workers=args.num_workers,drop_last=True, pin_memory=True, )
     return train_loader,test_loader
